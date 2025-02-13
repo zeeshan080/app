@@ -1,0 +1,23 @@
+# Use an official Python 3.11 runtime as a parent image
+FROM python:3.11
+
+# Set the working directory inside the container
+WORKDIR /app
+
+# Copy all project files into the container
+COPY . /app
+
+# Install the uv package manager
+RUN pip install uv
+
+# Install dependencies as listed in pyproject.toml into the system Python
+RUN uv pip install --system --requirements pyproject.toml
+
+# Set PYTHONPATH so Python can locate your package in the src directory
+ENV PYTHONPATH="/app/src"
+
+# Expose port 8000 for uvicorn
+EXPOSE 8000
+
+# Start the uvicorn server with auto-reload for development
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]

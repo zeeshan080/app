@@ -1,0 +1,35 @@
+# Builder stage: build dependencies in a slim environment
+FROM python:3.11-slim AS builder
+
+# Install build dependencies if needed
+RUN apt-get update && apt-get install -y --no-install-recommends build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Copy only the dependency file first to leverage Docker cache
+COPY pyproject.toml ./
+
+# Install uv and your project dependencies into the system Python
+RUN pip install --upgrade pip && pip install uv
+RUN uv pip install --system --requirements pyproject.toml
+
+# Final stage: minimal runtime image
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Copy installed packages from builder stage (typically in /usr/local)
+COPY --from=builder /usr/local /usr/local
+
+# Copy your application code
+COPY . /app
+
+# Set PYTHONPATH so Python can locate your package in the src directory
+ENV PYTHONPATH="/app/src"
+
+# Expose port 8000 for uvicorn
+EXPOSE 8000
+
+# Start the uvicorn server without reload (production-ready)
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
